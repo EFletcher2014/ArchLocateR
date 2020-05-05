@@ -9,8 +9,7 @@ library(ggplot2)
 library(scales)
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-inputFolder <-
-  "C:/Users/bandg/OneDrive/Documents/flashdrivestuff/Masters/ILS 695 CTA/N24_W6/Digitized Reports"
+inputFolder <- "" #TODO: Populate
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files <-
@@ -289,7 +288,7 @@ AllCoords <- select(AllCoords, c('doc', 'word', 'closestNoun')) #select only doc
 AllCoords <- rename(AllCoords, coordinate = word)
 
 #create a comparison tibble
-compTable <- read_csv("C:/Users/bandg/OneDrive/Documents/flashdrivestuff/Masters/ILS 695 CTA/FinalProjectExpectedResults.csv") #a csv of expected results
+compTable <- read_csv("") #a csv of expected results TODO: populate
 compTable <- mutate(compTable, actualCoords = AllCoords$coordinate)
 compTable <- mutate(compTable, actualResults = AllCoords$closestNoun)
 compTable <- mutate(compTable, contains = FALSE)
@@ -335,13 +334,13 @@ containsRateFormattingIgnoreInvalid <-nrow(filter(coordsInFormatting, contains =
 
 
 #write a csv of all points for use in other software
-write_csv(AllCoords, "C:/Users/bandg/OneDrive/Documents/flashdrivestuff/Masters/ILS 695 CTA/N24_W6/ILS695PointsAll.csv")
+write_csv(AllCoords, "") #TODO: populate
 
 #coordinates contain many duplicate entries, as many documents have the same formatting. Remove these
 coords <- distinct(AllCoords, coordinate, closestNoun, .keep_all = TRUE)
 
 #write a csv of distinct points to be mapped by other software
-write_csv(coords, "C:/Users/bandg/OneDrive/Documents/flashdrivestuff/Masters/ILS 695 CTA/N24_W6/ILS695Points.csv")
+write_csv(coords, "") #TODO: populate
 
 
 #Plot accuracy--create a dataset first
