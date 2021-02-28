@@ -201,7 +201,7 @@ find_nouns <- function(bkwrds_flag, stopNouns) {
 }
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-inputFolder <- "REPOSITORY" #TODO: Populate
+inputFolder <- "" #TODO: Populate
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files <-
@@ -380,7 +380,7 @@ wordsTibble <- mutate(wordsTibble, closestNoun = "")
 #list of common nouns which are not likely to be desired in end results
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-stopWordFolder <- "REPOSITORY" #TODO: Populate
+stopWordFolder <- "" #TODO: Populate
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files1 <-
@@ -415,49 +415,72 @@ AllCoords <- rename(AllCoords, coordinate = word)
 
 #create a comparison tibble
 compTable <- read_csv("") #a csv of expected results TODO: populate
-compTable <- mutate(compTable, actualCoords = AllCoords$coordinate)
-compTable <- mutate(compTable, actualResults = AllCoords$closestNoun)
-compTable <- mutate(compTable, contains = FALSE)
-compTable <- mutate(compTable, exact  = FALSE)
 
-#loop through all coordinates to compare expected and actual results
+#not all coordinates are pulled, so have to loop through to identify those which were not recovered
+testResults <- cbind(AllCoords)
+testCoords <- cbind(AllCoords)
+testDesc <- cbind(AllCoords)
+compTable <- mutate(compTable, exact = FALSE)
+compTable <- mutate(compTable, actualResults = "")
+compTable <- mutate(compTable, contains = FALSE)
+compTable <- mutate(compTable, exactCoord = FALSE)
+compTable <- mutate(compTable, exactDesc = FALSE)
+compTable <- mutate(compTable, containsDesc = FALSE)
 for(z in 1:nrow(compTable)) {
+  tempCoord <- filter(testCoords, coordinate == compTable$Coordinate[z])
+  if(nrow(tempCoord)>=1){
+    compTable$exactCoord[z] <- TRUE
+    anti_join(testCoords, tempCoord[1])
+  }
   
-  #flag if results contain expected results
-  compTable$contains[z] <- (grepl(compTable$Coordinate[z], compTable$actualCoords[z]) 
-                            && grepl(compTable$Association[z], compTable$actualResults[z]))
+  tempDesc <- filter(testCoords, closestNoun == compTable$Description[z])
+  if(nrow(tempDesc)>=1){
+    compTable$exactDesc[z] <- TRUE
+    compTable$containsDesc[z] <- TRUE
+    anti_join(testDesc, tempDesc[1])
+  } else {
+    tempDesc <- filter(testCoords, (grepl(closestNoun, compTable$Description[z], ignore.case = TRUE) | grepl(compTable$Description[z], closestNoun, ignore.case = TRUE)))
+    if(nrow(tempDesc)>=1) {
+      compTable$containsDesc[z] <- TRUE
+      anti_join(testDesc, tempDesc[1])
+    }
+  }
   
-  #flag if results are an exact match to expected results
-  compTable$exact[z] <- compTable$Association[z] == compTable$actualResults[z]
+  temp <- filter(testResults, coordinate == compTable$Coordinate[z] & closestNoun == compTable$Description[z])
+  print(temp)
+  if(nrow(temp)>=1){
+    compTable$exact[z] <- TRUE
+    compTable$contains[z] <- TRUE
+    compTable$actualResults[z] <- temp$closestNoun[1]
+    anti_join(testResults, temp[1])
+    print("TRUE")
+  } else {
+    temp <- filter(testResults, coordinate == compTable$Coordinate[z] && 
+                     (grepl(closestNoun, compTable$Description[z], ignore.case = TRUE) | grepl(compTable$Description[z], closestNoun, ignore.case = TRUE)))
+    print(temp)
+    if(nrow(temp)>=1){
+      compTable$contains[z] <- TRUE
+      compTable$actualResults[z] <- temp$closestNoun[1]
+      anti_join(testResults, temp[1])
+    }
+  }
 }
 
 #calculate success rates
-containsRateTotal <- nrow(filter(compTable, contains == TRUE))/nrow(AllCoords)
+containsRateTotal <- nrow(filter(compTable, contains == TRUE))/nrow(compTable)
+containsDescriptionRateTotal <- nrow(filter(compTable, containsDesc == TRUE))/nrow(compTable)
 
 #some coordinates do not actually have accompanying nouns, so we can take those out of calculations
 containsRateTotalIgnoreInvalid <- nrow(filter(compTable, contains == TRUE))/
-  (nrow(AllCoords) - nrow(filter(compTable, Association == "-1")))
+  (nrow(compTable) - nrow(filter(compTable, Description == "-1")))
 
-exactRateTotal <- nrow(filter(compTable, exact == TRUE))/nrow(AllCoords)
+exactRateTotal <- nrow(filter(compTable, exact == TRUE))/nrow(compTable)
+exactCoordinateRateTotal <- nrow(filter(compTable, exactCoord == TRUE))/nrow(compTable)
+exactDescriptionRateTotal <- nrow(filter(compTable, exactDesc == TRUE))/nrow(compTable)
 
 #some coordinates do not actually have accompanying nouns, so we can take those out of calculations
 exactRateTotalIgnoreInvalid <- nrow(filter(compTable, exact == TRUE))/
-  (nrow(AllCoords) -  nrow(filter(compTable, Association == "-1")))
-
-#filter coordinates by the location on the document at which they were found. Notes are more complex text (full sentences), while documents also contain headings (formatting)
-coordsInNotes <- filter(compTable, Structure == "Notes")
-coordsInFormatting <- filter(compTable, Structure == "Formatting")
-
-#calculate success rates based on section of document
-exactRateNotes <- nrow(filter(coordsInNotes, exact == TRUE))/nrow(coordsInNotes)
-containsRateNotes <- nrow(filter(coordsInNotes, contains == TRUE))/nrow(coordsInNotes)
-
-exactRateFormatting <- nrow(filter(coordsInFormatting, exact == TRUE))/nrow(coordsInFormatting)
-containsRateFormatting <- nrow(filter(coordsInFormatting, contains == TRUE))/nrow(coordsInFormatting)
-
-exactRateFormattingIgnoreInvalid <- nrow(filter(coordsInFormatting, exact == TRUE))/(nrow(coordsInFormatting) - nrow(filter(coordsInFormatting, Association == -1)))
-containsRateFormattingIgnoreInvalid <-nrow(filter(coordsInFormatting, contains == TRUE))/(nrow(coordsInFormatting) - nrow(filter(coordsInFormatting, Association == -1)))
-
+  (nrow(compTable) -  nrow(filter(compTable, Description == "-1")))
 
 #write a csv of all points for use in other software
 write_csv(AllCoords, "") #TODO: populate
