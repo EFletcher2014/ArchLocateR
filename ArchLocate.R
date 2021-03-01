@@ -137,71 +137,141 @@ collapse_coords <- function(coordz, bkwrds_flag, index, document) {
   }
 }
 
+findFirstWordOfSent <- function(startPoint) {
+  startWord <- which(wordsTibble$start == startPoint)
+  
+  while(length(startWord) == 0) {
+    startPoint <- startPoint + 1
+    startWord <- which(wordsTibble$start == startPoint)
+  }
+  return(startPoint)
+}
+
 find_nouns <- function(bkwrds_flag, stopNouns) {
   for(z in 1:nrow(fullTextTibble)) {
     
     if(bkwrds_flag){
       indices = fullTextTibble$bkwrdsCoordIndicesInWordCorpus
+      print("backwards")
       
-    } else {
-      indices = fullTextTibble$coordIndicesInWordCorpus
-    }
-    
-    #loop through coordinates to find the closest noun to each
-    for(x in 1:length(indices[[z]])) {
-      
-      #Index for which word to check, starting at the coordinate and moving out until the end of the text is reached
-      #Tie breaks by choosing the word which occurs before the coordinate because it is assumed that most sentences will work that way
-      wordNum <- 1
-      
-      #while this coordinate still has no associated noun and we have not finished the document, continue looking for a noun
-      while(wordsTibble$closestNoun[indices[[z]][x]] == "" && 
-            ((indices[[z]][x] - wordNum > 0 
-              && wordsTibble$doc[indices[[z]][x] - wordNum] == fullTextTibble$document[z]) 
-             || (indices[[z]][x] + wordNum <= nrow(wordsTibble) 
-                 && wordsTibble$doc[indices[[z]][x] + wordNum] == fullTextTibble$document[z]))) {
+      #loop through coordinates to find the closest noun to each
+      for(x in 1:length(indices[[z]])) {
+        print(wordsTibble$word[indices[[z]][x]])
         
-        #Check preceding words first
-        #if we have not reached the beginning of the document and the current word is a noun (or we already have a noun but it is preceded by an adjective), save it 
-        while(indices[[z]][x]-wordNum > 0 
-              && wordsTibble$doc[indices[[z]][x] - wordNum] == fullTextTibble$document[z]
-              && (wordsTibble$POS[indices[[z]][x] - wordNum] %in% c("NN", "NNS", "NNP", "NNPS")
-                  || (wordsTibble$closestNoun[indices[[z]][x]] != "" 
-                      && wordsTibble$POS[indices[[z]][x] - wordNum] %in% c("JJ")))
-              && !(wordsTibble$word[indices[[z]][x] - wordNum] %in% stopNouns)) {
-          
-          #we want to be able to store a string of nouns, or nouns and an adjective, so collapse them into one string and then increment wordNum to check the next (preceding) word
-          wordsTibble$closestNoun[indices[[z]][x]] <<- str_c(wordsTibble$word[indices[[z]][x]-wordNum], wordsTibble$closestNoun[indices[[z]][x]], sep = " ")
-          wordNum <- wordNum + 1
+        #find starting point--beginning of the sentence containing coordinate
+        tempString <- substr(fullTextTibble$text, 1, wordsTibble$start[indices[[z]][x]])
+        sentenceIndices <- str_locate_all(tempString, pattern = "(\\.\\s)|(\n\n)")
+        
+        #if no sentences this far in the document, start at the beginning
+        if(nrow(sentenceIndices[[1]]) == 0) {
+          startPoint <- 1
+        } else {
+          startPoint <- sentenceIndices[[1]][nrow(sentenceIndices[[1]])]
         }
+        startPoint <- findFirstWordOfSent(startPoint)
+        wordNum <- which(wordsTibble$start == startPoint)
+        print(wordsTibble$word[wordNum])
+        sentNum <- 1
+        fin <- indices[[z]][[x]]
+        print(fin)
         
-        #if the word before the coordinate did not work, try the word after it.
-        if(wordsTibble$closestNoun[indices[[z]][x]] == "") {
-          #if we have not reached the end of the document and the current word is a noun not in stopNouns (or an adjective followed by a noun which isn't a stop noun), save it 
-          while(indices[[z]][x] + wordNum <= nrow(wordsTibble) 
-                && wordsTibble$doc[indices[[z]][x] + wordNum] == fullTextTibble$document[z]
-                && (wordsTibble$POS[indices[[z]][x] + wordNum] %in% c("NN", "NNS", "NNP", "NNPS")
-                    || (wordsTibble$closestNoun[indices[[z]][x]] != "" 
-                        && wordsTibble$POS[indices[[z]][x] - wordNum] %in% c("JJ"))
-                    || (wordsTibble$POS[indices[[z]][x] + wordNum] %in% c("JJ") 
-                        && wordsTibble$POS[indices[[z]][x] + wordNum + 1] %in% c("NN", "NNS", "NNP", "NNPS")
-                        && !(wordsTibble$word[indices[[z]][x] + wordNum + 1] %in% stopNouns)))
-                && !(wordsTibble$word[indices[[z]][x] + wordNum] %in% stopNouns)) {
+        while (wordsTibble$closestNoun[indices[[z]][x]] == "") {
+          #print("stuck here 1")
+          while(wordNum < fin && wordsTibble$doc[wordNum] == fullTextTibble$document[z]
+                && (wordsTibble$POS[wordNum] %in% c("NN", "NNS", "NNP", "NNPS")
+                    || (wordsTibble$POS[wordNum] %in% c("JJ") 
+                        && wordsTibble$POS[wordNum+1] %in% c("NN", "NNS", "NNP", "NNPS")))
+                && !(wordsTibble$word[wordNum] %in% stopNouns)
+                && !(grepl(regex("\\d+cm", ignore_case = TRUE), wordsTibble$word[wordNum], ignore.case = TRUE))) {
             
-            #we want to be able to store a string of nouns, or nouns and an adjective, so collapse them into one string and then increment wordNum to check the next word
-            wordsTibble$closestNoun[indices[[z]][x]] <<- str_c(wordsTibble$closestNoun[indices[[z]][x]], wordsTibble$word[indices[[z]][x] + wordNum], sep = " ")
+            #we want to be able to store a string of nouns, or nouns and an adjective, so collapse them into one string and then increment wordNum to check the next (preceding) word
+            wordsTibble$closestNoun[indices[[z]][x]] <<- str_c(wordsTibble$closestNoun[indices[[z]][x]], wordsTibble$word[wordNum], sep = " ")
             wordNum <- wordNum + 1
+            #print("stuck here 2")
+          }
+          
+          wordNum <- wordNum + 1
+          if(wordNum >= fin){
+            print("MOVING BACK A SENTENCE")
+            fin <- which(wordsTibble$start==startPoint)
+            
+            #if no sentences this far in the document, start at the beginning
+            if(nrow(sentenceIndices[[1]])-sentNum == 0) {
+              startPoint <- 1
+            } else {
+              startPoint <- sentenceIndices[[1]][nrow(sentenceIndices[[1]])-sentNum]
+            }
+            
+            startPoint <- findFirstWordOfSent(startPoint)
+            wordNum <- which(wordsTibble$start==startPoint)
+            print(wordNum)
+            print(wordsTibble$word[wordNum])
+            print(fin)
+            sentNum <- sentNum + 1
           }
         }
-        #if no nouns were found, move out another word
-        wordNum <- wordNum + 1
+      }
+    } else {
+      indices = fullTextTibble$coordIndicesInWordCorpus
+      
+      #loop through coordinates to find the closest noun to each
+      for(x in 1:length(indices[[z]])) {
+        
+        #Index for which word to check, starting at the coordinate and moving out until the end of the text is reached
+        #Tie breaks by choosing the word which occurs before the coordinate because it is assumed that most sentences will work that way
+        wordNum <- 1
+        
+        #while this coordinate still has no associated noun and we have not finished the document, continue looking for a noun
+        while(wordsTibble$closestNoun[indices[[z]][x]] == "" && 
+              ((indices[[z]][x] - wordNum > 0 
+                && wordsTibble$doc[indices[[z]][x] - wordNum] == fullTextTibble$document[z]) 
+               || (indices[[z]][x] + wordNum <= nrow(wordsTibble) 
+                   && wordsTibble$doc[indices[[z]][x] + wordNum] == fullTextTibble$document[z]))) {
+          
+          #Check preceding words first
+          #if we have not reached the beginning of the document and the current word is a noun (or we already have a noun but it is preceded by an adjective), save it 
+          while(indices[[z]][x]-wordNum > 0 
+                && wordsTibble$doc[indices[[z]][x] - wordNum] == fullTextTibble$document[z]
+                && (wordsTibble$POS[indices[[z]][x] - wordNum] %in% c("NN", "NNS", "NNP", "NNPS")
+                    || (wordsTibble$closestNoun[indices[[z]][x]] != "" 
+                        && wordsTibble$POS[indices[[z]][x] - wordNum] %in% c("JJ")))
+                && !(wordsTibble$word[indices[[z]][x] - wordNum] %in% stopNouns)
+                && !(grepl(regex("\\d+cm", ignore_case = TRUE), wordsTibble$word[indices[[z]][x] - wordNum], ignore.case = TRUE))) {
+            
+            #we want to be able to store a string of nouns, or nouns and an adjective, so collapse them into one string and then increment wordNum to check the next (preceding) word
+            wordsTibble$closestNoun[indices[[z]][x]] <<- str_c(wordsTibble$word[indices[[z]][x]-wordNum], wordsTibble$closestNoun[indices[[z]][x]], sep = " ")
+            wordNum <- wordNum + 1
+          }
+          
+          #if the word before the coordinate did not work, try the word after it.
+          if(wordsTibble$closestNoun[indices[[z]][x]] == "") {
+            #if we have not reached the end of the document and the current word is a noun not in stopNouns (or an adjective followed by a noun which isn't a stop noun), save it 
+            while(indices[[z]][x] + wordNum <= nrow(wordsTibble) 
+                  && wordsTibble$doc[indices[[z]][x] + wordNum] == fullTextTibble$document[z]
+                  && (wordsTibble$POS[indices[[z]][x] + wordNum] %in% c("NN", "NNS", "NNP", "NNPS")
+                      || (wordsTibble$closestNoun[indices[[z]][x]] != "" 
+                          && wordsTibble$POS[indices[[z]][x] - wordNum] %in% c("JJ"))
+                      || (wordsTibble$POS[indices[[z]][x] + wordNum] %in% c("JJ") 
+                          && wordsTibble$POS[indices[[z]][x] + wordNum + 1] %in% c("NN", "NNS", "NNP", "NNPS")
+                          && !(wordsTibble$word[indices[[z]][x] + wordNum + 1] %in% stopNouns)))
+                  && !(wordsTibble$word[indices[[z]][x] + wordNum] %in% stopNouns)
+                  && !(grepl(regex("\\d+cm", ignore_case = TRUE), wordsTibble$word[indices[[z]][x] + wordNum], ignore.case = TRUE))) {
+              
+              #we want to be able to store a string of nouns, or nouns and an adjective, so collapse them into one string and then increment wordNum to check the next word
+              wordsTibble$closestNoun[indices[[z]][x]] <<- str_c(wordsTibble$closestNoun[indices[[z]][x]], wordsTibble$word[indices[[z]][x] + wordNum], sep = " ")
+              wordNum <- wordNum + 1
+            }
+          }
+          #if no nouns were found, move out another word
+          wordNum <- wordNum + 1
+        }
       }
     }
   }
 }
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-inputFolder <- "" #TODO: Populate
+inputFolder <- "C:\\Users\\bandg\\Documents\\flashdrivestuff\\Masters\\Thesis\\Software Repositories\\ArchLocateR\\Test_Files" #TODO: Populate
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files <-
@@ -365,7 +435,7 @@ for (z in 1:nrow(fullTextTibble)) { #loop through each document
 #filter to only include words which contain at least two letters. Also remove stopwords and fix some common archaeology-based issues
 wordsTibble <- filter(wordsTibble, grepl(".*[A-Za-z]+.*[A-Za-z]+.*", word, ignore.case = TRUE))
 wordsTibble <- anti_join(wordsTibble, tibble(word = c("em", "cm", "cmbd")))
-wordsTibble <- mutate(wordsTibble, POS = (ifelse(grepl("cmbd", word), ".", (ifelse(grepl("screening", word), "VB", POS)))))
+wordsTibble <- mutate(wordsTibble, POS = (ifelse(grepl("cmbd", word), ".", (ifelse(grepl("screening", word), "VB", (ifelse(grepl("charred", word), "JJ", POS)))))))
 
 #relocate the rest of the coordinates
 #Add temp to fullTextTibble so every document is accompanied by a list of indices of coordinates it contains
@@ -380,7 +450,7 @@ wordsTibble <- mutate(wordsTibble, closestNoun = "")
 #list of common nouns which are not likely to be desired in end results
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-stopWordFolder <- "" #TODO: Populate
+stopWordFolder <- "C:\\Users\\bandg\\Documents\\flashdrivestuff\\Masters\\Thesis\\Software Repositories\\ArchLocateR\\Test_Files\\stop words" #TODO: Populate
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files1 <-
@@ -414,7 +484,7 @@ AllCoords <- select(AllCoords, c('doc', 'word', 'closestNoun')) #select only doc
 AllCoords <- rename(AllCoords, coordinate = word)
 
 #create a comparison tibble
-compTable <- read_csv("") #a csv of expected results TODO: populate
+compTable <- read_csv("C:\\Users\\bandg\\Documents\\flashdrivestuff\\Masters\\Thesis\\Software Repositories\\ArchLocateR\\Test_Files\\Comparison Table\\Feature40CompTable.csv") #a csv of expected results TODO: populate
 
 #not all coordinates are pulled, so have to loop through to identify those which were not recovered
 testResults <- cbind(AllCoords)
@@ -433,20 +503,28 @@ for(z in 1:nrow(compTable)) {
     anti_join(testCoords, tempCoord[1])
   }
   
-  tempDesc <- filter(testCoords, closestNoun == compTable$Description[z])
+  tempDesc <- filter(testCoords, tolower(closestNoun) == tolower(compTable$Description[z]))
   if(nrow(tempDesc)>=1){
     compTable$exactDesc[z] <- TRUE
     compTable$containsDesc[z] <- TRUE
     anti_join(testDesc, tempDesc[1])
   } else {
-    tempDesc <- filter(testCoords, (grepl(closestNoun, compTable$Description[z], ignore.case = TRUE) | grepl(compTable$Description[z], closestNoun, ignore.case = TRUE)))
-    if(nrow(tempDesc)>=1) {
-      compTable$containsDesc[z] <- TRUE
-      anti_join(testDesc, tempDesc[1])
+    for(j in 1:nrow(testDesc)) {
+      if(grepl(testDesc$closestNoun[j], compTable$Description[z], ignore.case = TRUE)) {
+        compTable$containsDesc[j] <- TRUE
+        testDesc <- testDesc[-c(j),]
+        break
+      }
+      
+      if(grepl(compTable$Description[z], testDesc$closestNoun[j], ignore.case = TRUE)) {
+        compTable$containsDesc[j] <- TRUE
+        testDesc <- testDesc[-c(j),]
+        break
+      }
     }
   }
   
-  temp <- filter(testResults, coordinate == compTable$Coordinate[z] & closestNoun == compTable$Description[z])
+  temp <- filter(testResults, coordinate == compTable$Coordinate[z] & tolower(closestNoun) == tolower(compTable$Description[z]))
   print(temp)
   if(nrow(temp)>=1){
     compTable$exact[z] <- TRUE
@@ -455,16 +533,24 @@ for(z in 1:nrow(compTable)) {
     anti_join(testResults, temp[1])
     print("TRUE")
   } else {
-    temp <- filter(testResults, coordinate == compTable$Coordinate[z] && 
-                     (grepl(closestNoun, compTable$Description[z], ignore.case = TRUE) | grepl(compTable$Description[z], closestNoun, ignore.case = TRUE)))
-    print(temp)
-    if(nrow(temp)>=1){
-      compTable$contains[z] <- TRUE
-      compTable$actualResults[z] <- temp$closestNoun[1]
-      anti_join(testResults, temp[1])
+    for(j in 1:nrow(testResults)) {
+      if(grepl(testResults$closestNoun[j], compTable$Description[z], ignore.case = TRUE)) {
+        compTable$contains[z] <- TRUE
+        compTable$actualResults[z] <- testResults$closestNoun[j]
+        testResults <- testResults[-c(j),]
+        break
+      }
+      
+      if(grepl(compTable$Description[z], testResults$closestNoun[j], ignore.case = TRUE)) {
+        compTable$contains[z] <- TRUE
+        compTable$actualResults[z] <- testResults$closestNoun[j]
+        testResults <- testResults[-c(j),]
+        break
+      }
     }
   }
 }
+
 
 #calculate success rates
 containsRateTotal <- nrow(filter(compTable, contains == TRUE))/nrow(compTable)
@@ -482,6 +568,17 @@ exactDescriptionRateTotal <- nrow(filter(compTable, exactDesc == TRUE))/nrow(com
 exactRateTotalIgnoreInvalid <- nrow(filter(compTable, exact == TRUE))/
   (nrow(compTable) -  nrow(filter(compTable, Description == "-1")))
 
+#calculate success for different types of objects
+exactRateSiteIgnoreInvalid <- nrow(filter(compTable, exact == TRUE, Structure == "site"))/
+  (nrow(filter(compTable, Structure == "site")) - nrow(filter(compTable, Structure == "site", Description == "-1")))
+exactRateArtifactIgnoreInvalid <- nrow(filter(compTable, exact == TRUE, Structure == "artifact"))/
+  (nrow(filter(compTable, Structure == "artifact")) - nrow(filter(compTable, Structure == "artifact", Description == "-1")))
+
+containsRateSiteIgnoreInvalid <- nrow(filter(compTable, contains == TRUE, Structure == "site"))/
+  (nrow(filter(compTable, Structure == "site")) - nrow(filter(compTable, Structure == "site", Description == "-1")))
+containsRateArtifactIgnoreInvalid <- nrow(filter(compTable, contains == TRUE, Structure == "artifact"))/
+  (nrow(filter(compTable, Structure == "artifact")) - nrow(filter(compTable, Structure == "artifact", Description == "-1")))
+
 #write a csv of all points for use in other software
 write_csv(AllCoords, "") #TODO: populate
 
@@ -495,12 +592,12 @@ write_csv(coords, "") #TODO: populate
 #Plot accuracy--create a dataset first
 #group by corpus section ("Structure")
 compTable <- group_by(compTable, Structure)
-Section <- c(rep("Notes", 2), rep("Tabular", 2), rep("Total", 2))
+Section <- c(rep("site", 2), rep("artifact", 2), rep("Total", 2))
 
 #Display accuracy as exact stacked with the extras which only contain
 Accuracy <- rep(c("Exact", "Contains"), 3)
-Percentage <- c(c(exactRateNotes, containsRateNotes - exactRateNotes),
-           c(exactRateFormattingIgnoreInvalid, containsRateFormattingIgnoreInvalid - exactRateFormattingIgnoreInvalid),
+Percentage <- c(c(exactRateSiteIgnoreInvalid, containsRateSiteIgnoreInvalid - exactRateSiteIgnoreInvalid),
+           c(exactRateArtifactIgnoreInvalid, containsRateArtifactIgnoreInvalid - exactRateArtifactIgnoreInvalid),
            c(exactRateTotalIgnoreInvalid, containsRateTotalIgnoreInvalid - exactRateTotalIgnoreInvalid))
 data <- data.frame(Section,Accuracy,Percentage)
 
