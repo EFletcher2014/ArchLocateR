@@ -5,4 +5,4 @@
 *.shx
 *.lock
 Test_Files/*
-!Test_Files/stop words*
+!Test_Files/stop_words*
