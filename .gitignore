@@ -4,5 +4,11 @@
 *.shp
 *.shx
 *.lock
-Test_Files/*
-!Test_Files/stop words*
+Pit40Coords.csv
+Pit 40 Sources Compiled.txt
+Test_Files/test/*
+Test_Files/Extra/*
+Test_Files/results/*
+!Test_Files/results/.gitignore
+Test_Files/comparison_table/*
+!Test_Files/comparison_table/.gitignore

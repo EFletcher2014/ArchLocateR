@@ -401,7 +401,7 @@ wordsTibble <- mutate(wordsTibble, closestNoun = "")
 #list of common nouns which are not likely to be desired in end results
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-stopWordFolder <- "Test_Files\\stop words"
+stopWordFolder <- "Test_Files/stop_words"
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files1 <-
@@ -435,7 +435,7 @@ AllCoords <- select(AllCoords, c('doc', 'word', 'closestNoun')) #select only doc
 AllCoords <- rename(AllCoords, coordinate = word)
 
 #create a comparison tibble
-compTable <- read_csv("Test_Files\\Comparison Table\\Feature40CompTable.csv") #a csv of expected results
+compTable <- read_csv("Test_Files/comparison_table/Feature40CompTable.csv") #a csv of expected results
 
 #not all coordinates are pulled, so have to loop through to identify those which were not recovered
 testResults <- cbind(AllCoords)
@@ -530,13 +530,13 @@ containsRateArtifactIgnoreInvalid <- nrow(filter(compTable, contains == TRUE, St
   (nrow(filter(compTable, Structure == "artifact")) - nrow(filter(compTable, Structure == "artifact", Description == "-1")))
 
 #write a csv of all points for use in other software
-write_csv(AllCoords, "")
+write_csv(AllCoords, "Test_Files/results/AllLocations.csv")
 
 #coordinates contain many duplicate entries, as many documents have the same formatting. Remove these
 coords <- distinct(AllCoords, coordinate, closestNoun, .keep_all = TRUE)
 
 #write a csv of distinct points to be mapped by other software
-write_csv(coords, "")
+write_csv(coords, "Test_Files/results/UniqueLocations.csv")
 
 
 #Plot accuracy--create a dataset first
