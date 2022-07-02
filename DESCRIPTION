@@ -8,4 +8,4 @@ Description: temp
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
-Imports: tidyverse
+Imports: tidyverse,tidytext,tidyselect,openNLP,tidyr,NLP,dplyr,ggplot2,scales,readr
