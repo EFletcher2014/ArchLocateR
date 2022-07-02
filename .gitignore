@@ -6,3 +6,5 @@
 *.lock
 Test_Files/*
 !Test_Files/stop_words*
+!Test_Files/comparison_table/.gitignore
+!Test_Files/results/.gitignore
