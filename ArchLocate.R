@@ -57,12 +57,6 @@ collapse_coords <- function(coordz, bkwrds_flag, index, document) {
         }  
       }
       if(alreadyHandled) {
-       #print("indices")
-        for (k in 1:(length(indices))) {
-         #print(wordsTibble[indices[k],])
-        }
-        #print("SKIPPED")
-        #print(str_c(coordz[[1]][i, 1][[1]], " ", coordz[[1]][i, 2][[1]]))
         
         coordsTokens <- filter(
           wordsTibble,
@@ -71,12 +65,8 @@ collapse_coords <- function(coordz, bkwrds_flag, index, document) {
           & wordsTibble$start <= coordz[[1]][i, 2][[1]], 
           .preserve = TRUE
         )
-        #print(coordsTokens)
-        #print("index")
-        #print(wordsTibble[indices[i],])
+        
         wordsTibble$isBkwrdsCoord[indices[i]] <<- FALSE
-        #print("coordinates here")
-        #print(coordz[[1]][-(i),])
         
         temp <- fullTextTibble$bkwrds_coords
         temp[[index]] <- coordz[[1]][-(i),]
@@ -97,10 +87,6 @@ collapse_coords <- function(coordz, bkwrds_flag, index, document) {
       indices = fullTextTibble$coordIndicesInWordCorpus[[index]]
     }
     
-    for (k in 1:(length(indices))) {
-      #print(wordsTibble[indices[k],])
-    }
-    
     
     #Gather chunks of the coordinate--words which have starts between the coordinate start and end
     coordsTokens <- filter(
@@ -113,17 +99,8 @@ collapse_coords <- function(coordz, bkwrds_flag, index, document) {
     
     #collapse those chunks into one and store it in wordsTibble in place of the first chunk, then remove the extra chunks
     if(nrow(coordsTokens)>1) {
-      #print(nrow(coordsTokens))
       fullCoord <- str_c(coordsTokens$word, collapse = "")
-      #print("")
-      #print(str_c(coordz[[1]][i, 1][[1]], " ", coordz[[1]][i, 2][[1]]))
-      #print(coordsTokens)
-      #print(str_c("coord ", fullCoord))
-      #print(wordsTibble[indices[i],])
-      #print(str_c("old word ", wordsTibble$word[indices[i]]))
       wordsTibble$word[indices[i]] <<- fullCoord
-      #print(str_c("index ", indices[i]))
-      #print(str_c("new word ", wordsTibble$word[indices[i]]))
       wordsTibble <<- anti_join(wordsTibble, slice(coordsTokens, 2:n()), by = c('start', 'doc'))
       
       #relocate the rest of the coordinates because collapsing the coordinates changed the setup of wordsTibble
@@ -176,7 +153,6 @@ find_nouns <- function(bkwrds_flag, stopNouns) {
         print(fin)
         
         while (wordsTibble$closestNoun[indices[[z]][x]] == "") {
-          #print("stuck here 1")
           while(wordNum < fin && wordsTibble$doc[wordNum] == fullTextTibble$document[z]
                 && (wordsTibble$POS[wordNum] %in% c("NN", "NNS", "NNP", "NNPS")
                     || (wordsTibble$POS[wordNum] %in% c("JJ") 
@@ -187,7 +163,6 @@ find_nouns <- function(bkwrds_flag, stopNouns) {
             #we want to be able to store a string of nouns, or nouns and an adjective, so collapse them into one string and then increment wordNum to check the next (preceding) word
             wordsTibble$closestNoun[indices[[z]][x]] <<- str_c(wordsTibble$closestNoun[indices[[z]][x]], wordsTibble$word[wordNum], sep = " ")
             wordNum <- wordNum + 1
-            #print("stuck here 2")
           }
           
           wordNum <- wordNum + 1
@@ -271,7 +246,7 @@ find_nouns <- function(bkwrds_flag, stopNouns) {
 }
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-inputFolder <- "C:\\Users\\bandg\\Documents\\flashdrivestuff\\Masters\\Thesis\\Software Repositories\\ArchLocateR\\Test_Files" #TODO: Populate
+inputFolder <- "Test_Files"
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files <-
@@ -306,30 +281,6 @@ for (z in 1:nrow(textTibble)) {
     fttIndex <- fttIndex + 1
   }
 }
-
-# #all functions I've found to read .docx files are confused by the spacing in mine so I have to add spaces
-# for (z in 1:nrow(fullTextTibble)) {
-#   #find locations where a capital letter is not preceded by a space
-#   issues <- str_locate_all(fullTextTibble$text[z], "\\S[A-Z]+")
-#   
-#   #if there are some, replace with a substring including a space before the capital letter
-#   if (length(issues[[1]]) > 0) {
-#     #issues contains a beginning and end location for each entry, so we only need half of its length
-#     for (x in 1:(length(issues[[1]]) / 2)) {
-#       fullTextTibble$text[z] <-
-#         str_c(
-#           substr(fullTextTibble$text[z], 0, issues[[1]][x]),
-#           " ",
-#           substr(
-#             fullTextTibble$text[z],
-#             issues[[1]][x] + 1,
-#             str_length(fullTextTibble$text[z])
-#           )
-#         )
-#       issues[[1]][x:length(issues[[1]])] = issues[[1]][x:length(issues[[1]])] + 1 #fixing issues makes the indices for the rest of them incorrect, so increment them to reflect the new space
-#     }
-#   }
-# }
 
 #locate coordinates, structured like 'N' or 'S' and then a number, followed by 'E' or 'W' and then a number
 fullTextTibble <-
@@ -450,7 +401,7 @@ wordsTibble <- mutate(wordsTibble, closestNoun = "")
 #list of common nouns which are not likely to be desired in end results
 
 #Folder in which all files are located. Eventually, would like to make a GUI to allow the user to select this
-stopWordFolder <- "C:\\Users\\bandg\\Documents\\flashdrivestuff\\Masters\\Thesis\\Software Repositories\\ArchLocateR\\Test_Files\\stop words" #TODO: Populate
+stopWordFolder <- "Test_Files\\stop words"
 
 #Gather all .docx files from the folder. Eventually, should handle .txt and .pdf as well
 files1 <-
@@ -484,7 +435,7 @@ AllCoords <- select(AllCoords, c('doc', 'word', 'closestNoun')) #select only doc
 AllCoords <- rename(AllCoords, coordinate = word)
 
 #create a comparison tibble
-compTable <- read_csv("C:\\Users\\bandg\\Documents\\flashdrivestuff\\Masters\\Thesis\\Software Repositories\\ArchLocateR\\Test_Files\\Comparison Table\\Feature40CompTable.csv") #a csv of expected results TODO: populate
+compTable <- read_csv("Test_Files\\Comparison Table\\Feature40CompTable.csv") #a csv of expected results
 
 #not all coordinates are pulled, so have to loop through to identify those which were not recovered
 testResults <- cbind(AllCoords)
@@ -531,7 +482,6 @@ for(z in 1:nrow(compTable)) {
     compTable$contains[z] <- TRUE
     compTable$actualResults[z] <- temp$closestNoun[1]
     anti_join(testResults, temp[1])
-    print("TRUE")
   } else {
     for(j in 1:nrow(testResults)) {
       if(grepl(testResults$closestNoun[j], compTable$Description[z], ignore.case = TRUE)) {
@@ -580,13 +530,13 @@ containsRateArtifactIgnoreInvalid <- nrow(filter(compTable, contains == TRUE, St
   (nrow(filter(compTable, Structure == "artifact")) - nrow(filter(compTable, Structure == "artifact", Description == "-1")))
 
 #write a csv of all points for use in other software
-write_csv(AllCoords, "") #TODO: populate
+write_csv(AllCoords, "")
 
 #coordinates contain many duplicate entries, as many documents have the same formatting. Remove these
 coords <- distinct(AllCoords, coordinate, closestNoun, .keep_all = TRUE)
 
 #write a csv of distinct points to be mapped by other software
-write_csv(coords, "") #TODO: populate
+write_csv(coords, "")
 
 
 #Plot accuracy--create a dataset first

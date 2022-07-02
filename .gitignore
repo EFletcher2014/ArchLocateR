@@ -1,1 +1,8 @@
-Test_Files/
+*.dbf
+*.fix
+*.prj
+*.shp
+*.shx
+*.lock
+Test_Files/*
+!Test_Files/stop words*
