@@ -1,0 +1,11 @@
+Package: ArchLocate
+Title: Extract Location Information from Excavation Notes
+Version: 1.0.0
+Authors@R: 
+    person("Emily", "Fletcher", , "efletcher2014@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: temp
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Imports: tidyverse,tidytext,tidyselect,openNLP,tidyr,NLP,dplyr,ggplot2,scales,readr

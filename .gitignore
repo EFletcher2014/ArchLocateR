@@ -5,6 +5,7 @@
 *.shx
 *.lock
 Pit40Coords.csv
+Pit-40-Sources-Compiled.txt
 Pit 40 Sources Compiled.txt
 Test_Files/test/*
 Test_Files/Extra/*
